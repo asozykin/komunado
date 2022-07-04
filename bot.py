@@ -8,7 +8,7 @@ import logging
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 import os
 
-PORT = int(os.environ.get('PORT', 443))
+PORT = int(os.environ.get('PORT', 8443))
 print("Port: ", PORT)
 
 # Enable logging
