@@ -24,7 +24,7 @@ ADMINCHATID = os.environ["ADMINCHATID"]
 def start(update, context):
     """Send a message when the command /start is issued."""
     #print(context.message)
-    context.bot.sendMessage(ADMINCHATID, text = update.message)
+    context.bot.sendMessage(ADMINCHATID, text = update.message.text)
     update.message.reply_text('Hi!')
 
 def help(update, context):
