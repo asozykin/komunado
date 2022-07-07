@@ -1,7 +1,7 @@
 """
 Simple Bot to reply to Telegram messages taken from the python-telegram-bot examples.
 Deployed using heroku.
-Author: liuhh02 https://medium.com/@liuhh02
+Example taken from: liuhh02 https://medium.com/@liuhh02
 """
 
 import logging
@@ -22,6 +22,7 @@ TOKEN = os.environ["TOKEN"]
 # context. Error handlers also receive the raised TelegramError object in error.
 def start(update, context):
     """Send a message when the command /start is issued."""
+    print(context.message)
     update.message.reply_text('Hi!')
 
 def help(update, context):
