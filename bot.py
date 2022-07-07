@@ -23,8 +23,8 @@ ADMINCHATID = os.environ["ADMINCHATID"]
 # context. Error handlers also receive the raised TelegramError object in error.
 def start(update, context):
     """Send a message when the command /start is issued."""
-    print(context.message)
-    context.bot.send_message(ADMINCHATID, text = 'Yo')
+    #print(context.message)
+    context.bot.sendMessage(ADMINCHATID, text = 'Yo')
     update.message.reply_text('Hi!')
 
 def help(update, context):
