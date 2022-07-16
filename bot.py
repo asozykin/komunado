@@ -33,6 +33,8 @@ def help(update, context):
 
 def echo(update, context):
     """Echo the user message."""
+    context.bot.sendMessage(ADMINCHATID, text = update.message.to_json())
+    update.message.forward(ADMINCHATID)
     update.message.reply_text(update.message.text)
 
 def error(update, context):
