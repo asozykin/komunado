@@ -39,6 +39,8 @@ def echo(update, context):
 def photo(update, context):
     context.bot.sendMessage(ADMINCHATID, text = "photo: " + update.message.to_json())
     update.message.forward(ADMINCHATID)
+    buttons = [[KeyboardButton("Parse")], ["Ignore"]]
+    context.bot.sendMessage(ADMINCHATID, reply_markup = ReplyKeyboardMarkup(buttons))
 
 def error(update, context):
     """Log Errors caused by Updates."""
