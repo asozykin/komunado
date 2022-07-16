@@ -87,7 +87,7 @@ def main():
     dp.add_handler(MessageHandler(Filters.photo, photo))
 
     # handle buttons
-    dp.add_handler(CallbackQueryHandler(button))
+    dp.add_handler(InlineQueryHandler(button))
 
     # Start the Bot
     updater.start_webhook(listen="0.0.0.0",
