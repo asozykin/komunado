@@ -50,14 +50,14 @@ def photo(update, context):
 
     context.bot.sendMessage(ADMINCHATID, text="What to do with that photo?", reply_markup=InlineKeyboardMarkup(buttons))
 
-def photo(update, context):
-    query = update.callback_query
+#def buttons(update, context):
+#    query = update.callback_query
 
     # CallbackQueries need to be answered, even if no notification to the user is needed
     # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
-    query.answer()
+ #   query.answer()
 
-    query.edit_message_text(text=f"Selected option: {query.data}")
+ #   query.edit_message_text(text=f"Selected option: {query.data}")
 
 def error(update, context):
     """Log Errors caused by Updates."""
@@ -87,7 +87,7 @@ def main():
     dp.add_handler(MessageHandler(Filters.photo, photo))
 
     # handle buttons
-    dp.add_handler(InlineQueryHandler(button))
+    #dp.add_handler(InlineQueryHandler(button))
 
     # Start the Bot
     updater.start_webhook(listen="0.0.0.0",
