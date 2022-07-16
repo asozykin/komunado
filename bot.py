@@ -5,7 +5,7 @@ Example taken from: liuhh02 https://medium.com/@liuhh02
 """
 
 import logging
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, KeyboardButton
 import os
 
 PORT = int(os.environ.get('PORT', 8443))
