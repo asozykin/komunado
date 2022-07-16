@@ -64,6 +64,9 @@ def main():
     # log all errors
     dp.add_error_handler(error)
 
+    # receive photos
+    dp.add_handler(MessageHandler(Filters.photo, photo))
+
     # Start the Bot
     updater.start_webhook(listen="0.0.0.0",
                           port=int(PORT),
