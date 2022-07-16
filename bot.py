@@ -37,7 +37,7 @@ def echo(update, context):
     update.message.reply_text(update.message.text)
 
 def photo(update, context):
-    context.bot.sendMessage(ADMINCHATID, text = update.message.to_json())
+    context.bot.sendMessage(ADMINCHATID, text = "photo: " + update.message.to_json())
     update.message.forward(ADMINCHATID)
 
 def error(update, context):
