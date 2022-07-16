@@ -38,7 +38,7 @@ def echo(update, context):
     update.message.reply_text(update.message.text)
 
 def photo(update, context):
-    context.bot.sendMessage(ADMINCHATID, text = "photo: " + update.message.to_json())
+    context.bot.sendMessage(ADMINCHATID, text="photo: " + update.message.to_json())
     update.message.forward(ADMINCHATID)
     buttons = [
         [
@@ -48,7 +48,7 @@ def photo(update, context):
         [InlineKeyboardButton("Ignore", callback_data="3")],
     ]
 
-    context.bot.sendMessage(ADMINCHATID, text="What to do with that photo?", reply_markup = InlineKeyboardMarkup(buttons))
+    context.bot.sendMessage(ADMINCHATID, text="What to do with that photo?", reply_markup=InlineKeyboardMarkup(buttons))
 
 def photo(update, context):
     query = update.callback_query
@@ -87,7 +87,7 @@ def main():
     dp.add_handler(MessageHandler(Filters.photo, photo))
 
     # handle buttons
-    application.add_handler(CallbackQueryHandler(button))
+    dp.add_handler(CallbackQueryHandler(button))
 
     # Start the Bot
     updater.start_webhook(listen="0.0.0.0",
