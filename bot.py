@@ -5,7 +5,8 @@ Example taken from: liuhh02 https://medium.com/@liuhh02
 """
 
 import logging
-from telegram.ext import * #Updater, CommandHandler, MessageHandler, Filters, KeyboardButton
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 import os
 
 PORT = int(os.environ.get('PORT', 8443))
@@ -39,8 +40,24 @@ def echo(update, context):
 def photo(update, context):
     context.bot.sendMessage(ADMINCHATID, text = "photo: " + update.message.to_json())
     update.message.forward(ADMINCHATID)
-    buttons = [[KeyboardButton("Parse")], ["Ignore"]]
-    context.bot.sendMessage(ADMINCHATID, reply_markup = ReplyKeyboardMarkup(buttons))
+    buttons = [
+        [
+            InlineKeyboardButton("Parse", callback_data="1"),
+            InlineKeyboardButton("Snooze", callback_data="2"),
+        ],
+        [InlineKeyboardButton("Ignore", callback_data="3")],
+    ]
+
+    context.bot.sendMessage(ADMINCHATID, text="What to do with that photo?", reply_markup = InlineKeyboardMarkup(buttons))
+
+def photo(update, context):
+    query = update.callback_query
+
+    # CallbackQueries need to be answered, even if no notification to the user is needed
+    # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
+    query.answer()
+
+    query.edit_message_text(text=f"Selected option: {query.data}")
 
 def error(update, context):
     """Log Errors caused by Updates."""
@@ -68,6 +85,9 @@ def main():
 
     # receive photos
     dp.add_handler(MessageHandler(Filters.photo, photo))
+
+    # handle buttons
+    application.add_handler(CallbackQueryHandler(button))
 
     # Start the Bot
     updater.start_webhook(listen="0.0.0.0",
