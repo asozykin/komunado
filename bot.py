@@ -34,8 +34,11 @@ def help(update, context):
 def echo(update, context):
     """Echo the user message."""
     context.bot.sendMessage(ADMINCHATID, text = update.message.to_json())
-    update.message.forward(ADMINCHATID)
     update.message.reply_text(update.message.text)
+
+def photo(update, context):
+    context.bot.sendMessage(ADMINCHATID, text = update.message.to_json())
+    update.message.forward(ADMINCHATID)
 
 def error(update, context):
     """Log Errors caused by Updates."""
