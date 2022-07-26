@@ -1,0 +1,1 @@
+echo ${GOOGLE_CREDENTIALS} > /komunado/google-credentials.json
