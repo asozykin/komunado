@@ -5,9 +5,14 @@ Example taken from: liuhh02 https://medium.com/@liuhh02
 """
 
 import logging
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 import os
+import base64
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import Updater, CommandHandler, MessageHandler, CallbackQueryHandler, CallbackContext, Filters
+from google.cloud import vision
+from google.cloud.vision import ImageAnnotatorClient
+from uuid import uuid4
+from io import BytesIO
 
 PORT = int(os.environ.get('PORT', 8443))
 print("Port: ", PORT)
@@ -32,17 +37,22 @@ def help(update, context):
     """Send a message when the command /help is issued."""
     update.message.reply_text('Help!')
 
-def echo(update, context):
-    """Echo the user message."""
-    context.bot.sendMessage(ADMINCHATID, text = update.message.to_json())
-    update.message.reply_text(update.message.text)
+#def echo(update, context):
+#    """Echo the user message."""
+#    context.bot.sendMessage(ADMINCHATID, text = update.message.to_json())
+#    update.message.reply_text(update.message.text)
 
 def photo(update, context):
     context.bot.sendMessage(ADMINCHATID, text="photo: " + update.message.to_json())
-    update.message.forward(ADMINCHATID)
+    fwd_message = update.message.forward(ADMINCHATID)
+    #store the pic file_id in a key-value store in memory for future references to pic (for recognition etc.) 
+    key = str(uuid4())
+    value = fwd_message.photo[-1].file_id
+    context.bot_data[key] = value
+
     buttons = [
         [
-            InlineKeyboardButton("Parse", callback_data="1"),
+            InlineKeyboardButton("Parse", callback_data = key),
             InlineKeyboardButton("Snooze", callback_data="2"),
         ],
         [InlineKeyboardButton("Ignore", callback_data="3")],
@@ -50,14 +60,39 @@ def photo(update, context):
 
     context.bot.sendMessage(ADMINCHATID, text="What to do with that photo?", reply_markup=InlineKeyboardMarkup(buttons))
 
-#def buttons(update, context):
-#    query = update.callback_query
+def button(update, context):
+    query = update.callback_query
 
     # CallbackQueries need to be answered, even if no notification to the user is needed
     # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
- #   query.answer()
+    query.answer()
 
- #   query.edit_message_text(text=f"Selected option: {query.data}")
+#    print('key = ', query.data)
+#    print('value = ', context.bot_data[query.data])
+
+    pic = context.bot.get_file(context.bot_data[query.data])
+    print('pic = ', str(pic))
+    b = BytesIO((pic.download_as_bytearray())) #or maybe try getvalue()
+    b.seek(0)
+    content = b.read()
+    #content = base64.b64encode(BytesIO(pic.download_as_bytearray()))
+#    context.bot.send_photo(ADMINCHATID, photo = pic.file_id)
+
+    client = vision.ImageAnnotatorClient()
+    image = vision.Image(content = content)
+    #image = vision.Image()
+    #image.source.image_uri = pic.file_path #doesn't work, err code 7 - we're not allowed to access URL on your behalf 
+    response = client.label_detection(image = image) #object_localization(image=image)
+    print(response.label_annotations)
+
+    s = ''
+    for label in response.label_annotations:
+        s = s + label.description + ', ' + str(round(label.score*100, 1)) + '%' + '\n\r'
+
+    context.bot.sendMessage(ADMINCHATID, text = s)
+
+    #query.edit_message_text(text=f"Selected option: {query.data}")
+    #query.edit_message_text(text=msg.message_id)
 
 def error(update, context):
     """Log Errors caused by Updates."""
@@ -78,7 +113,7 @@ def main():
     dp.add_handler(CommandHandler("help", help))
 
     # on noncommand i.e message - echo the message on Telegram
-    dp.add_handler(MessageHandler(Filters.text, echo))
+#    dp.add_handler(MessageHandler(Filters.text, echo))
 
     # log all errors
     dp.add_error_handler(error)
@@ -87,7 +122,7 @@ def main():
     dp.add_handler(MessageHandler(Filters.photo, photo))
 
     # handle buttons
-    #dp.add_handler(InlineQueryHandler(button))
+    dp.add_handler(CallbackQueryHandler(button))
 
     # Start the Bot
     updater.start_webhook(listen="0.0.0.0",
