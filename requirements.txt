@@ -1,2 +1,2 @@
 python-telegram-bot==13.13
-google-api-python-client=3.0.0
+google-api-python-client==3.0.0
