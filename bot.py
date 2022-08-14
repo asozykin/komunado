@@ -1,12 +1,11 @@
 """
-Simple Bot to reply to Telegram messages taken from the python-telegram-bot examples.
-Deployed using heroku.
-Example taken from: liuhh02 https://medium.com/@liuhh02
+KomuNado bot
 """
 
 import logging
 import os
 import base64
+import json
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, CallbackQueryHandler, CallbackContext, Filters
 from google.cloud import vision
@@ -25,13 +24,86 @@ logger = logging.getLogger(__name__)
 TOKEN = os.environ["TOKEN"]
 ADMINCHATID = os.environ["ADMINCHATID"]
 
+# load config
+with open('config.json') as f:
+    config = json.load(f)
+
+# shortcuts
+btn = config["buttons"]
+txt = config["messagetext"]
+lim = config["limits"]
+
 # Define a few command handlers. These usually take the two arguments update and
 # context. Error handlers also receive the raised TelegramError object in error.
 def start(update, context):
     """Send a message when the command /start is issued."""
-    #print(context.message)
-    context.bot.sendMessage(ADMINCHATID, text = update.message.to_json())
-    update.message.reply_text('Hi!')
+    # Language selection and welcome message
+    if not context.args:
+        # if no language argument passed with /start, then we show the language menu to choose language explicitly
+        buttons = [
+            [
+                InlineKeyboardButton(btn["BTN_EN"], callback_data = "EN"),
+                InlineKeyboardButton(btn["BTN_RU"], callback_data = "RU"),
+            ],
+        ]
+        update.message.reply_text(text = "Please choose your language/Выберите язык", reply_markup = InlineKeyboardMarkup(buttons))              
+
+    elif context.args[0] in {"RU", "EN"}:
+        # record language constant for this chat if it's been passed with /start command
+        context.chat_data["language"] = context.args[0]
+        update.message.reply_text(txt[context.chat_data["language"]]["WELCOME"])
+
+    else:
+        context.chat_data["language"] = "EN"
+        update.message.reply_text("Bad language parameter, switching to English. " + config["messagetext"][context.chat_data["language"]]["WELCOME"])
+
+def languagemenu_check(callback_data):
+    return (len(callback_data) == 0) or callback_data in {"RU", "EN"}
+
+# reaction to the choice of language via language keyboard
+def languagemenu(update, context):
+    query = update.callback_query
+
+    # CallbackQueries need to be answered, even if no notification to the user is needed
+    # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
+    query.answer()
+
+    if query.data in {"RU", "EN"}:
+        # record language constant for this chat if it's been selected via keyboard
+        context.chat_data["language"] = query.data        
+        query.edit_message_text(txt[context.chat_data["language"]]["WELCOME"])
+
+    else:
+        context.chat_data["language"] = "EN"
+        query.edit_message_text("Bad language parameter, switching to English. " + txt[context.chat_data["language"]]["WELCOME"])
+
+    # Main Menu - Sell/Buy
+    buttons = [
+        [
+            InlineKeyboardButton(btn[context.chat_data["language"]]["BTN_SELL"], callback_data = "SELL"),
+            InlineKeyboardButton(btn[context.chat_data["language"]]["BTN_BUY"], callback_data = "BUY"),
+        ],
+    ]
+    update.callback_query.message.reply_text(text = txt[context.chat_data["language"]]["SELL_OR_BUY"], reply_markup = InlineKeyboardMarkup(buttons))    
+
+# check if SELL/BUY menu has been used
+def sellbuymenu_check(callback_data):
+    return callback_data in {"SELL", "BUY"}
+
+# reaction to the choice of SELL or BUY use-case
+def sellbuymenu(update, context):
+    query = update.callback_query
+
+    # CallbackQueries need to be answered, even if no notification to the user is needed
+    # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
+    query.answer()
+
+    if query.data == "SELL":
+        update.callback_query.message.reply_text(text = txt[context.chat_data["language"]]["SELL_START"])
+    elif query.data == "BUY":
+        update.callback_query.message.reply_text(text = txt[context.chat_data["language"]]["BUY_START"])
+    else:
+        update.callback_query.message.reply_text(text = "UNDER CONSTRUCTION")
 
 def help(update, context):
     """Send a message when the command /help is issued."""
@@ -42,6 +114,7 @@ def help(update, context):
 #    context.bot.sendMessage(ADMINCHATID, text = update.message.to_json())
 #    update.message.reply_text(update.message.text)
 
+# reacton to a photo sent for moderation
 def photo(update, context):
     context.bot.sendMessage(ADMINCHATID, text="photo: " + update.message.to_json())
     fwd_message = update.message.forward(ADMINCHATID)
@@ -58,9 +131,14 @@ def photo(update, context):
         [InlineKeyboardButton("Ignore", callback_data="3")],
     ]
 
-    context.bot.sendMessage(ADMINCHATID, text="What to do with that photo?", reply_markup=InlineKeyboardMarkup(buttons))
+    context.bot.sendMessage(ADMINCHATID, text="What to do with that photo?", reply_markup=InlineKeyboardMarkup(buttons))          
 
-def button(update, context):
+# check if modermenu has been used
+def modermenu_check(callback_data):
+    return len(callback_data) > 10
+
+# reaction to the choice
+def modermenu(update, context):
     query = update.callback_query
 
     # CallbackQueries need to be answered, even if no notification to the user is needed
@@ -121,8 +199,14 @@ def main():
     # receive photos
     dp.add_handler(MessageHandler(Filters.photo, photo))
 
-    # handle buttons
-    dp.add_handler(CallbackQueryHandler(button))
+    # handle language menu (after /start command)
+    dp.add_handler(CallbackQueryHandler(languagemenu, pattern = languagemenu_check))
+
+    # handle main menu
+    dp.add_handler(CallbackQueryHandler(sellbuymenu, pattern = sellbuymenu_check))
+
+    # handle moderator's menu on new photo
+    dp.add_handler(CallbackQueryHandler(modermenu, pattern = modermenu_check))
 
     # Start the Bot
     updater.start_webhook(listen="0.0.0.0",
