@@ -6,7 +6,7 @@ import logging
 import os
 import base64
 import json
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, CallbackQueryHandler, CallbackContext, Filters
 from google.cloud import vision
 from google.cloud.vision import ImageAnnotatorClient
@@ -46,7 +46,7 @@ def start(update, context):
                 InlineKeyboardButton(btn["BTN_RU"], callback_data = "RU"),
             ],
         ]
-        update.message.reply_text(text = "Please choose your language/Выберите язык", reply_markup = InlineKeyboardMarkup(buttons))              
+        update.message.reply_text(text = "Please choose your language/Выберите язык", reply_markup = InlineKeyboardMarkup(buttons, one_time_keyboard = True))              
 
     elif context.args[0] in {"RU", "EN"}:
         # record language constant for this chat if it's been passed with /start command
@@ -84,7 +84,7 @@ def languagemenu(update, context):
             InlineKeyboardButton(btn[context.chat_data["language"]]["BTN_BUY"], callback_data = "BUY"),
         ],
     ]
-    update.callback_query.message.reply_text(text = txt[context.chat_data["language"]]["SELL_OR_BUY"], reply_markup = InlineKeyboardMarkup(buttons))    
+    update.callback_query.message.reply_text(text = txt[context.chat_data["language"]]["SELL_OR_BUY"], reply_markup = InlineKeyboardMarkup(buttons, one_time_keyboard = True))    
 
 # check if SELL/BUY menu has been used
 def sellbuymenu_check(callback_data):
@@ -99,7 +99,13 @@ def sellbuymenu(update, context):
     query.answer()
 
     if query.data == "SELL":
-        update.callback_query.message.reply_text(text = txt[context.chat_data["language"]]["SELL_START"])
+        # share the phone # and start posting photos
+        buttons = [
+            [
+                KeyboardButton('Share contact', request_contact = True)
+            ,]
+        ]
+        update.callback_query.message.reply_text(text = txt[context.chat_data["language"]]["SELL_START"], reply_markup = ReplyKeyboardMarkup(buttons, one_time_keyboard = True))
     elif query.data == "BUY":
         update.callback_query.message.reply_text(text = txt[context.chat_data["language"]]["BUY_START"])
     else:
@@ -113,6 +119,13 @@ def help(update, context):
 #    """Echo the user message."""
 #    context.bot.sendMessage(ADMINCHATID, text = update.message.to_json())
 #    update.message.reply_text(update.message.text)
+
+# handle phone number
+def contact(update, context):
+    contact = update.effective_message.contact
+    phone = contact.phone_number
+    context.chat_data["phone"] = phone
+    update.message.reply_text(txt[context.chat_data["language"]]["SELL_PHONE_OK"])    
 
 # reacton to a photo sent for moderation
 def photo(update, context):
@@ -204,6 +217,9 @@ def main():
 
     # handle main menu
     dp.add_handler(CallbackQueryHandler(sellbuymenu, pattern = sellbuymenu_check))
+
+    # handle phone number
+    dp.add_handler(MessageHandler(Filters.contact, contact))
 
     # handle moderator's menu on new photo
     dp.add_handler(CallbackQueryHandler(modermenu, pattern = modermenu_check))
