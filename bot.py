@@ -102,8 +102,8 @@ def sellbuymenu(update, context):
         # share the phone # and start posting photos
         buttons = [
             [
-                KeyboardButton('Share contact', request_contact = True)
-            ,]
+                KeyboardButton(btn[context.chat_data["language"]]["BTN_PHONE"], request_contact = True)
+            ],
         ]
         update.callback_query.message.reply_text(text = txt[context.chat_data["language"]]["SELL_START"], reply_markup = ReplyKeyboardMarkup(buttons, one_time_keyboard = True))
     elif query.data == "BUY":
