@@ -1,6 +1,7 @@
 """
 KomuNado bot
 """
+# -*- coding: UTF-8 -*-
 
 import logging
 import os
@@ -24,6 +25,9 @@ logger = logging.getLogger(__name__)
 TOKEN = os.environ["TOKEN"]
 ADMINCHATID = os.environ["ADMINCHATID"]
 
+# misc text constants
+backhand_index_pointing_down = u'\U0001F447'
+
 # load config
 with open('config.json') as f:
     config = json.load(f)
@@ -46,7 +50,7 @@ def start(update, context):
                 InlineKeyboardButton(btn["BTN_RU"], callback_data = "RU"),
             ],
         ]
-        update.message.reply_text(text = "Please choose your language/Выберите язык", reply_markup = InlineKeyboardMarkup(buttons, one_time_keyboard = True))              
+        update.message.reply_text(text = txt["LANG"], reply_markup = InlineKeyboardMarkup(buttons, one_time_keyboard = True))              
 
     elif context.args[0] in {"RU", "EN"}:
         # record language constant for this chat if it's been passed with /start command
@@ -55,8 +59,9 @@ def start(update, context):
 
     else:
         context.chat_data["language"] = "EN"
-        update.message.reply_text("Bad language parameter, switching to English. " + config["messagetext"][context.chat_data["language"]]["WELCOME"])
+        update.message.reply_text(txt["LANG_ERR"] + ' ' + config["messagetext"][context.chat_data["language"]]["WELCOME"])
 
+# check if LANGUAGE menu has been used
 def languagemenu_check(callback_data):
     return (len(callback_data) == 0) or callback_data in {"RU", "EN"}
 
@@ -103,9 +108,9 @@ def sellbuymenu(update, context):
         buttons = [
             [
                 KeyboardButton(btn[context.chat_data["language"]]["BTN_PHONE"], request_contact = True)
-            ],
+            ,]
         ]
-        update.callback_query.message.reply_text(text = txt[context.chat_data["language"]]["SELL_START"], reply_markup = ReplyKeyboardMarkup(buttons, one_time_keyboard = True))
+        update.callback_query.message.reply_text(text = txt[context.chat_data["language"]]["SELL_START"].format(backhand_index_pointing_down), reply_markup = ReplyKeyboardMarkup(buttons, one_time_keyboard = True))
     elif query.data == "BUY":
         update.callback_query.message.reply_text(text = txt[context.chat_data["language"]]["BUY_START"])
     else:
