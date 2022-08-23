@@ -13,12 +13,13 @@
       "EN" : {
         "BTN_SELL" : "Sell smth",
         "BTN_BUY" : "Browse (and buy)",        
-        "BTN_PHONE" : "Share contact"        
+        "BTN_CONTACT" : "Share contact"        
       }
   },
   "messagetext" : {
     "LANG" : "Выберите язык/Please choose your language",
     "LANG_ERR" : "Bad language parameter, switching to English",
+    "MODER_START" : "New photo from {}",
     "RU" : {
       "WELCOME" : "Доска объявлений Комунадо приветствует Вас! Здесь продают и покупают товары. Продолжая пользоваться сервисом, Вы принимаете условия оферты {}.",
       "SELL_OR_BUY" : "Можно разместить объявление или перейти к просмотру объявлений для покупки:",

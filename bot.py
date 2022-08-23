@@ -7,6 +7,7 @@ import logging
 import os
 import base64
 import json
+import time
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, CallbackQueryHandler, CallbackContext, Filters
 from google.cloud import vision
@@ -37,6 +38,47 @@ btn = config["buttons"]
 txt = config["messagetext"]
 lim = config["limits"]
 
+# keyboards
+def get_lang_keyboard():
+    lang_keyboard = [
+        [
+            InlineKeyboardButton(btn["BTN_EN"], callback_data = "lang_EN"),
+            InlineKeyboardButton(btn["BTN_RU"], callback_data = "lang_RU"),
+        ],
+    ]
+    keyboard_text = txt["LANG"]
+    return keyboard_text, lang_keyboard
+
+def get_sell_or_buy_keyboard(lang):
+    sell_or_buy_keyboard = [
+        [
+            InlineKeyboardButton(btn[lang]["BTN_SELL"], callback_data = "sell_or_buy_SELL"),
+            InlineKeyboardButton(btn[lang]["BTN_BUY"], callback_data = "sell_or_buy_BUY"),
+        ],
+    ]
+    keyboard_text = txt[lang]["SELL_OR_BUY"]
+    return keyboard_text, sell_or_buy_keyboard
+
+def get_share_contact_keyboard(lang):
+    share_contact_keyboard = [
+        [
+            KeyboardButton(btn[lang]["BTN_CONTACT"], request_contact = True)
+        ,]
+    ]
+    keyboard_text = txt[lang]["SELL_START"].format(backhand_index_pointing_down)
+    return keyboard_text, share_contact_keyboard
+
+def get_moder_keyboard():
+    moder_keyboard = [
+        [
+            InlineKeyboardButton("Parse", callback_data = key),
+            InlineKeyboardButton("Snooze", callback_data="2"),
+        ],
+        [InlineKeyboardButton("Ignore", callback_data="3")],
+    ]
+    keyboard_text = txt["MODER_START"].format(datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
+    return keyboard_text, moder_keyboard
+
 # Define a few command handlers. These usually take the two arguments update and
 # context. Error handlers also receive the raised TelegramError object in error.
 def start(update, context):
@@ -44,13 +86,8 @@ def start(update, context):
     # Language selection and welcome message
     if not context.args:
         # if no language argument passed with /start, then we show the language menu to choose language explicitly
-        buttons = [
-            [
-                InlineKeyboardButton(btn["BTN_EN"], callback_data = "EN"),
-                InlineKeyboardButton(btn["BTN_RU"], callback_data = "RU"),
-            ],
-        ]
-        update.message.reply_text(text = txt["LANG"], reply_markup = InlineKeyboardMarkup(buttons, one_time_keyboard = True))              
+        keyboard_text, lang_keyboard = get_lang_keyboard()
+        update.message.reply_text(text = keyboard_text, reply_markup = InlineKeyboardMarkup(lang_keyboard, one_time_keyboard = True))              
 
     elif context.args[0] in {"RU", "EN"}:
         # record language constant for this chat if it's been passed with /start command
@@ -61,12 +98,12 @@ def start(update, context):
         context.chat_data["language"] = "EN"
         update.message.reply_text(txt["LANG_ERR"] + ' ' + config["messagetext"][context.chat_data["language"]]["WELCOME"])
 
-# check if LANGUAGE menu has been used
-def languagemenu_check(callback_data):
-    return (len(callback_data) == 0) or callback_data in {"RU", "EN"}
+# check if LANGUAGE menu has been used OR empty callback data has arrived
+def lang_menu_check(callback_data):
+    return (len(callback_data) == 0) or callback_data.startswith("lang")
 
 # reaction to the choice of language via language keyboard
-def languagemenu(update, context):
+def lang_menu(update, context):
     query = update.callback_query
 
     # CallbackQueries need to be answered, even if no notification to the user is needed
@@ -82,21 +119,15 @@ def languagemenu(update, context):
         context.chat_data["language"] = "EN"
         query.edit_message_text("Bad language parameter, switching to English. " + txt[context.chat_data["language"]]["WELCOME"])
 
-    # Main Menu - Sell/Buy
-    buttons = [
-        [
-            InlineKeyboardButton(btn[context.chat_data["language"]]["BTN_SELL"], callback_data = "SELL"),
-            InlineKeyboardButton(btn[context.chat_data["language"]]["BTN_BUY"], callback_data = "BUY"),
-        ],
-    ]
-    update.callback_query.message.reply_text(text = txt[context.chat_data["language"]]["SELL_OR_BUY"], reply_markup = InlineKeyboardMarkup(buttons, one_time_keyboard = True))    
+    keyboard_text, sell_or_buy_keyboard = get_sell_or_buy_keyboard(context.chat_data["language"])
+    update.callback_query.message.reply_text(text = keyboard_text, reply_markup = InlineKeyboardMarkup(sell_or_buy_keyboard, one_time_keyboard = True))    
 
 # check if SELL/BUY menu has been used
-def sellbuymenu_check(callback_data):
-    return callback_data in {"SELL", "BUY"}
+def sell_or_buy_menu_check(callback_data):
+    return callback_data.startswith("sell_or_buy")
 
 # reaction to the choice of SELL or BUY use-case
-def sellbuymenu(update, context):
+def sell_or_buy_menu(update, context):
     query = update.callback_query
 
     # CallbackQueries need to be answered, even if no notification to the user is needed
@@ -105,12 +136,8 @@ def sellbuymenu(update, context):
 
     if query.data == "SELL":
         # share the phone # and start posting photos
-        buttons = [
-            [
-                KeyboardButton(btn[context.chat_data["language"]]["BTN_PHONE"], request_contact = True)
-            ,]
-        ]
-        update.callback_query.message.reply_text(text = txt[context.chat_data["language"]]["SELL_START"].format(backhand_index_pointing_down), reply_markup = ReplyKeyboardMarkup(buttons, one_time_keyboard = True))
+        keyboard_text, share_contact_keyboard = get_share_contact_keyboard(context.chat_data["language"])
+        update.callback_query.message.reply_text(text = keyboard_text, reply_markup = ReplyKeyboardMarkup(share_contact_keyboard, one_time_keyboard = True))
     elif query.data == "BUY":
         update.callback_query.message.reply_text(text = txt[context.chat_data["language"]]["BUY_START"])
     else:
@@ -134,29 +161,22 @@ def contact(update, context):
 
 # reacton to a photo sent for moderation
 def photo(update, context):
-    context.bot.sendMessage(ADMINCHATID, text="photo: " + update.message.to_json())
+    context.bot.sendMessage(ADMINCHATID, text = "photo: " + update.message.to_json())
     fwd_message = update.message.forward(ADMINCHATID)
     #store the pic file_id in a key-value store in memory for future references to pic (for recognition etc.) 
     key = str(uuid4())
     value = fwd_message.photo[-1].file_id
     context.bot_data[key] = value
 
-    buttons = [
-        [
-            InlineKeyboardButton("Parse", callback_data = key),
-            InlineKeyboardButton("Snooze", callback_data="2"),
-        ],
-        [InlineKeyboardButton("Ignore", callback_data="3")],
-    ]
+    keyboard_text, moder_keyboard = get_moder_keyboard()
+    context.bot.sendMessage(ADMINCHATID, text = keyboard_text, reply_markup = InlineKeyboardMarkup(moder_keyboard))          
 
-    context.bot.sendMessage(ADMINCHATID, text="What to do with that photo?", reply_markup=InlineKeyboardMarkup(buttons))          
-
-# check if modermenu has been used
-def modermenu_check(callback_data):
+# check if moder_menu has been used
+def moder_menu_check(callback_data):
     return len(callback_data) > 10
 
-# reaction to the choice
-def modermenu(update, context):
+# reaction to the moder_keyboard
+def moder_menu(update, context):
     query = update.callback_query
 
     # CallbackQueries need to be answered, even if no notification to the user is needed
