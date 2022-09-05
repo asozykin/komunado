@@ -1,6 +1,7 @@
 {
   "limits" : {
-    "LIMIT_USER_PHOTO_CNT" : 3
+    "LIMIT_USER_PHOTO_CNT" : 9,
+    "LIMIT_USER_POSTS_CNT" : 3
   },
   "buttons" : {
       "BTN_EN" : "English",
@@ -8,7 +9,8 @@
       "RU" : {          
         "BTN_SELL" : "Разместить объявление",
         "BTN_BUY" : "Просмотр объявлений",
-        "BTN_PHONE" : "Предоставить контакт"        
+        "BTN_HELP" : "Помощь",
+        "BTN_CONTACT" : "Предоставить контакт"        
       },
       "EN" : {
         "BTN_SELL" : "Sell smth",
@@ -44,7 +46,7 @@
       "SELL_DELETE_OK" : "SELL_DELETE_OK",
       "SELL_DELETE_ERR" : "SELL_DELETE_ERR",
       "BUY_START" : "Выберите одну или несколько категорий для просмотра объявлений",
-      "MANUAL" : "Чтобы сменить язык, перейдите на /start. /n To change language go to /start."
+      "HELP" : "Чтобы сменить язык, перейдите на /start. /n To change language go to /start."
     },
     "EN" : {
       "WELCOME" : "WELCOME",
