@@ -53,6 +53,8 @@ CONTACT = "contact"
 LIMIT = "limit"
 DELETED = "deleted"
 backhand_index_pointing_down = u'\U0001F447'
+SALE_CHANNEL_URL = "t.me/+RZFql5defQk0Mjky"
+TOS_URL = "www.corinf.ru"
 
 # load config
 with open('config.json') as f:
@@ -71,16 +73,17 @@ def get_chat(context):
         status = NEW
 
     try:
-        lang = context.chat_data["lang"]
+        lang_str = context.chat_data["lang"]
     except KeyError:
-        lang = ""
+        lang_str = "EN"
 
     try:
         active_posts = context.chat_data["active_posts"]
     except KeyError:
         active_posts = 0
 
-    return status, lang, active_posts
+ #   print("\n", "status = ", status, ", lang = ", lang_str, ", active_posts = ", active_posts, "\n")
+    return status, lang_str, active_posts
 
 
 #######################################################################################################################
@@ -144,6 +147,7 @@ class DummyPersistence(BasePersistence):
 #######################################################################################################################
 # KEYBOARDS                                                                                                           #
 #######################################################################################################################
+
 def get_lang_keyboard():
     lang_keyboard = [
         [
@@ -165,44 +169,53 @@ def get_lang_help_keyboard():
     return keyboard_text, lang_help_keyboard
 
 
-def get_sell_buy_help_keyboard(lang):
+def get_sell_buy_help_keyboard(lang_str):
     sell_buy_help_keyboard = [
         [
-            InlineKeyboardButton(btn[lang]["BTN_SELL"], callback_data = "sell_buy_help_SELL"),
+            InlineKeyboardButton(btn[lang_str]["BTN_SELL"], callback_data = "sell_buy_help_SELL"),
         ],
         [
-            InlineKeyboardButton(btn[lang]["BTN_BUY"], callback_data = "sell_buy_help_BUY"),
+            InlineKeyboardButton(btn[lang_str]["BTN_BUY"], callback_data = "sell_buy_help_BUY", url = SALE_CHANNEL_URL),
         ],
         [
-            InlineKeyboardButton(btn[lang]["BTN_HELP"], callback_data = "sell_buy_help_HELP"),
+            InlineKeyboardButton(btn[lang_str]["BTN_HELP"], callback_data = "sell_buy_help_HELP"),
         ],
     ]
-    keyboard_text = txt[lang]["WELCOME"]
+    keyboard_text = txt[lang_str]["WELCOME"]
     return keyboard_text, sell_buy_help_keyboard
 
-def get_buy_help_keyboard(lang, available_limit):
+def get_buy_help_keyboard(lang_str, available_limit):
     buy_help_keyboard = [
         [
-            InlineKeyboardButton(btn[lang]["BTN_BUY"], callback_data = "buy_help_BUY"),
-            InlineKeyboardButton(btn[lang]["BTN_HELP"], callback_data = "buy_help_HELP"),
+            InlineKeyboardButton(btn[lang_str]["BTN_BUY"], callback_data = "buy_help_BUY", url = "SALE_CHANNEL_URL"),
+            InlineKeyboardButton(btn[lang_str]["BTN_HELP"], callback_data = "buy_help_HELP"),
         ],
     ]
     if available_limit > 1:
-        keyboard_text = txt[lang]["WELCOME_CONTACT_OK"].format(available_limit, lim["LIMIT_USER_PHOTO_CNT"])
+        keyboard_text = txt[lang_str]["WELCOME_CONTACT_OK"].format(available_limit, lim["LIMIT_USER_PHOTO_CNT"])
     elif available_limit == 1:
-        keyboard_text = txt[lang]["WELCOME_CONTACT_ONE"].format(lim["LIMIT_USER_PHOTO_CNT"])
+        keyboard_text = txt[lang_str]["WELCOME_CONTACT_ONE"].format(lim["LIMIT_USER_PHOTO_CNT"])
     else:
-        keyboard_text = txt[lang]["WELCOME_CONTACT_LIMIT"]
+        keyboard_text = txt[lang_str]["WELCOME_CONTACT_LIMIT"]
     return keyboard_text, buy_help_keyboard
 
-def get_share_contact_keyboard(lang):
+def get_tos_keyboard(lang_str):
+    tos_keyboard = [
+        [
+            InlineKeyboardButton(btn[lang_str]["BTN_TOS"], callback_data = "tos_OK"),
+        ],
+    ]
+    keyboard_text = txt[lang_str]["TOS"].format(TOS_URL)
+    return keyboard_text, tos_keyboard
+
+def get_share_contact_keyboard(lang_str):
     share_contact_keyboard = [
         [
-            KeyboardButton(btn[lang]["BTN_CONTACT"], request_contact = True)
+            KeyboardButton(btn[lang_str]["BTN_CONTACT"], request_contact = True)
         ,]
     ]
-    keyboard_text = txt[lang]["CONTACT"].format(backhand_index_pointing_down)
-    return keyboard_text, share_contact_keyboard    
+    keyboard_text = txt[lang_str]["CONTACT"].format(backhand_index_pointing_down)
+    return keyboard_text, share_contact_keyboard
 
 def get_moder_keyboard():
     moder_keyboard = [
@@ -284,14 +297,14 @@ def lang_menu(update, context):
         lang(update, context, "EN")
 
 # assign lang status and proceed according to the workflow
-def lang(update, context, lang_string):
+def lang(update, context, lang_str):
     status, _ , active_posts = get_chat(context)
     if status.startswith("banned"):
         banned()
         return
 
     # setting language for current chat
-    context.chat_data["lang"] = lang_string
+    context.chat_data["lang"] = lang_str
 
     # calculating available posts limit
     available_limit = lim["LIMIT_USER_POSTS_CNT"] - active_posts
@@ -299,23 +312,25 @@ def lang(update, context, lang_string):
     # for newbies - upgrade status to LANG and show the SELL_BUY_HELP keyboard
     if status in (NEW, PRELANG, DELETED):
         status = LANG
-        context.user_data["status"] = status
-        keyboard_text, sell_buy_help_keyboard = get_sell_buy_help_keyboard(lang_string)
+        context.chat_data["status"] = status
+        keyboard_text, sell_buy_help_keyboard = get_sell_buy_help_keyboard(lang_str)
         update.effective_message.reply_text(text = keyboard_text, reply_markup = InlineKeyboardMarkup(sell_buy_help_keyboard, one_time_keyboard = True))    
 
     # changing (or keeping, if current language has been passed on to this proc) language for LANG or TOS statuses, status doesn't change:
     elif status in (LANG, TOS):
-        keyboard_text, sell_buy_help_keyboard = get_sell_buy_help_keyboard(lang_string)
+        keyboard_text, sell_buy_help_keyboard = get_sell_buy_help_keyboard(lang_str)
         update.effective_message.reply_text(text = keyboard_text, reply_markup = InlineKeyboardMarkup(sell_buy_help_keyboard, one_time_keyboard = True))    
 
     # for CONTACT status, we show a BUY_HELP keyboard with a message, which depends on available number of posts until limit is reached
     elif status == CONTACT:
-        keyboard_text, buy_help_keyboard = get_buy_help_keyboard(lang_string, available_limit)
+        keyboard_text, buy_help_keyboard = get_buy_help_keyboard(lang_str, available_limit)
         update.effective_message.reply_text(text = keyboard_text, reply_markup = InlineKeyboardMarkup(buy_help_keyboard, one_time_keyboard = True))
+ 
     # for LIMIT status, we also show a BUY_HELP keyboard, but tell the user that posting is not possible until some posts are deleted
     elif status == LIMIT:
-        keyboard_text, buy_help_keyboard = get_buy_help_keyboard(lang_string, 0)
+        keyboard_text, buy_help_keyboard = get_buy_help_keyboard(lang_str, 0)
         update.effective_message.reply_text(text = keyboard_text, reply_markup = InlineKeyboardMarkup(buy_help_keyboard, one_time_keyboard = True))
+ 
     # no status
     else:
         pass
@@ -330,7 +345,7 @@ def help(update, context):
 
     # for newbies, show the language menu to choose language explicitly
     if status in (NEW, PRELANG, DELETED):
-        keyboard_text, lang_keyboard = get_lang_help_keyboard()
+        keyboard_text, lang_help_keyboard = get_lang_help_keyboard()
         update.effective_message.reply_text(text = keyboard_text, reply_markup = InlineKeyboardMarkup(lang_help_keyboard, one_time_keyboard = True))              
     # preserve current lang for lang+ statuses
     elif lang != "":
@@ -356,23 +371,23 @@ def lang_help_menu(update, context):
 
     if query.data in ALLOWED_LANGUAGES:
         # record language constant for this chat if it's been selected via keyboard
-        lang_help(context, query.data)
+        lang_help(update, context, query.data)
     else:
         update.effective_message.reply_text(txt["LANG_ERR"])
-        lang(context, "EN")
+        lang_help(update, context, "EN")
 
 # show help in a given language and proceed with the workflow
-def lang_help(update, context, lang_string):
+def lang_help(update, context, lang_str):
     status, _ , active_posts = get_chat(context)
     if status.startswith("banned"):
         banned()
         return
 
     # show help
-    update.effective_message.reply_text(msg[lang_string]["HELP"])
+    update.effective_message.reply_text(txt[lang_str]["HELP"])
 
     # proceed with the workflow
-    lang(update, context, lang_string)
+    lang(update, context, lang_str)
 
 
 # check if SELL_BUY_HELP keyboard has been used
@@ -381,22 +396,68 @@ def sell_buy_help_menu_check(callback_data):
 
 # reaction to the SELL_BUY_HELP keyboard
 def sell_buy_help_menu(update, context):
+    status, lang_str, active_posts = get_chat(context)
+    if status.startswith("banned"):
+        banned()
+        return
+
     query = update.callback_query
 
     # CallbackQueries need to be answered, even if no notification to the user is needed
     # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
     query.answer()
 
+    # calculating available posts limit
+    available_limit = lim["LIMIT_USER_POSTS_CNT"] - active_posts
+
     query.data = query.data.replace("sell_buy_help_", "")
 
+    # SELL button handler
     if query.data == "SELL":
-        # share the phone # and start posting photos
-        keyboard_text, share_contact_keyboard = get_share_contact_keyboard(context.chat_data["lang"])
-        update.effective_message.reply_text(text = keyboard_text, reply_markup = ReplyKeyboardMarkup(share_contact_keyboard, one_time_keyboard = True))
+        # no LANG status -> show ERROR_TO_START message and send the user back to START
+        if status in (NEW, PRELANG, DELETED):
+            update.effective_message.reply_text(text = txt[lang_str]["ERROR_TO_START"])    
+            start(update, context)
+
+        # before TOS -> offer TOS approval
+        elif status == LANG:
+            print("\n", "!!!DEBUG!!!", "\n")
+            keyboard_text, tos_keyboard = get_tos_keyboard(lang_str)
+            print("\n", keyboard_text, "\n")
+            update.effective_message.reply_text(text = keyboard_text, reply_markup = InlineKeyboardMarkup(tos_keyboard, one_time_keyboard = True))
+
+        # after TOS, before CONTACT -> offer to share contact information
+        elif status == TOS:
+            keyboard_text, share_contact_keyboard = get_share_contact_keyboard(lang_str)
+            update.effective_message.reply_text(text = keyboard_text, reply_markup = ReplyKeyboardMarkup(share_contact_keyboard, one_time_keyboard = True))
+
+        # already at CONTACT+ (when there shouldn't be any TOS button according to the workflow) 
+        # for CONTACT status, we show a BUY_HELP keyboard with a message, which depends on available number of posts until limit is reached
+        elif status == CONTACT:
+            keyboard_text, buy_help_keyboard = get_buy_help_keyboard(lang_str, available_limit)
+            update.effective_message.reply_text(text = keyboard_text, reply_markup = InlineKeyboardMarkup(buy_help_keyboard, one_time_keyboard = True))
+
+        # for LIMIT status, we also show a BUY_HELP keyboard, but tell the user that posting is not possible until some posts are deleted
+        elif status == LIMIT:
+            keyboard_text, buy_help_keyboard = get_buy_help_keyboard(lang_str, 0)
+            update.effective_message.reply_text(text = keyboard_text, reply_markup = InlineKeyboardMarkup(buy_help_keyboard, one_time_keyboard = True))
+
+        # invalid status
+        else:
+            pass
+
+    # BUY button -> redirect to the channel (built-in into button functionality)
     elif query.data == "BUY":
-        update.effective_message.reply_text(text = txt[context.chat_data["lang"]]["BUY_START"])
+        pass
+ 
+    # HELP button -> /call help
+    elif query.data == "HELP":
+        help(update, context)
+ 
+    # unknown button:
     else:
-        update.effective_message.reply_text(text = "UNDER CONSTRUCTION")
+        s = "unknown query.data = ", query.data
+        update.callback_query.message.reply_text(text = s)
 
 # check if BUY_HELP menu has been used
 def buy_help_menu_check(callback_data):
@@ -404,6 +465,11 @@ def buy_help_menu_check(callback_data):
 
 # reaction to the BUY_HELP keyboard
 def buy_help_menu(update, context):
+    status, lang_str, active_posts = get_chat(context)
+    if status.startswith("banned"):
+        banned()
+        return
+
     query = update.callback_query
 
     # CallbackQueries need to be answered, even if no notification to the user is needed
@@ -412,15 +478,207 @@ def buy_help_menu(update, context):
 
     query.data = query.data.replace("buy_help_", "")
 
+    # BUY button -> redirect to the channel (built-in into button functionality)
     if query.data == "BUY":
-        # share the phone # and start posting photos
-        keyboard_text, share_contact_keyboard = get_share_contact_keyboard(context.chat_data["lang"])
-        update.callback_query.message.reply_text(text = keyboard_text, reply_markup = ReplyKeyboardMarkup(share_contact_keyboard, one_time_keyboard = True))
+        pass
+    # HELP button -> /call help
     elif query.data == "HELP":
-        update.callback_query.message.reply_text(text = txt[context.chat_data["lang"]]["BUY_START"])
+        help(update, context)
     else:
         update.callback_query.message.reply_text(text = "UNDER CONSTRUCTION")
 
+# check if TOS keyboard has been used
+def tos_menu_check(callback_data):
+    return callback_data.startswith("tos")
+
+# reaction to TOS keyboard
+def tos_menu(update, context):
+    status, lang_str, active_posts = get_chat(context)
+    if status.startswith("banned"):
+        banned()
+        return
+
+    query = update.callback_query
+
+    # calculating available posts limit
+    available_limit = lim["LIMIT_USER_POSTS_CNT"] - active_posts
+
+    # CallbackQueries need to be answered, even if no notification to the user is needed
+    # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
+    query.answer()
+
+    query.data = query.data.replace("tos_", "")
+
+    if query.data == "OK":
+
+        # no LANG status -> show ERROR_TO_START message and send the user back to START
+        if status in (NEW, PRELANG, DELETED):
+            update.effective_message.reply_text(text = txt[lang_str]["ERROR_TO_START"])    
+            start(update, context)
+
+        # TOS approved, set status and request contact
+        elif status == LANG:
+            status = TOS
+            context.chat_data["status"] = status
+            keyboard_text, share_contact_keyboard = get_share_contact_keyboard(lang_str)
+            update.effective_message.reply_text(text = keyboard_text, reply_markup = ReplyKeyboardMarkup(share_contact_keyboard, one_time_keyboard = True))
+
+        # after TOS, before CONTACT -> offer to share contact information
+        elif status == TOS:
+            keyboard_text, share_contact_keyboard = get_share_contact_keyboard(lang_str)
+            update.effective_message.reply_text(text = keyboard_text, reply_markup = ReplyKeyboardMarkup(share_contact_keyboard, one_time_keyboard = True))
+
+        # already at CONTACT+ (when there shouldn't be any SELL button according to the workflow) 
+        # for CONTACT status, we show a BUY_HELP keyboard with a message, which depends on available number of posts until limit is reached
+        elif status == CONTACT:
+            keyboard_text, buy_help_keyboard = get_buy_help_keyboard(lang_str, available_limit)
+            update.effective_message.reply_text(text = keyboard_text, reply_markup = InlineKeyboardMarkup(buy_help_keyboard, one_time_keyboard = True))
+
+        # for LIMIT status, we also show a BUY_HELP keyboard, but tell the user that posting is not possible until some posts are deleted
+        elif status == LIMIT:
+            keyboard_text, buy_help_keyboard = get_buy_help_keyboard(lang_str, 0)
+            update.effective_message.reply_text(text = keyboard_text, reply_markup = InlineKeyboardMarkup(buy_help_keyboard, one_time_keyboard = True))
+
+        # invalid status
+        else:
+            pass
+
+    # invalid query.data
+    else:
+        pass
+
+# handle CONTACT button
+def contact(update, context):
+    status, lang_str, active_posts = get_chat(context)
+    if status.startswith("banned"):
+        banned()
+        return
+
+    # calculating available posts limit
+    available_limit = lim["LIMIT_USER_POSTS_CNT"] - active_posts
+
+    # no LANG status -> show ERROR_TO_START message and send the user back to START
+    if status in (NEW, PRELANG, DELETED):
+        update.effective_message.reply_text(text = txt[lang_str]["ERROR_TO_START"])    
+        start(update, context)
+
+    # TOS should also be approved, request TOS
+    elif status == LANG:
+        update.effective_message.reply_text(text = txt[lang_str]["ERROR_TO_SELL"])
+        keyboard_text, sell_buy_help_keyboard = get_sell_buy_help_keyboard(lang_str)
+        update.effective_message.reply_text(text = keyboard_text, reply_markup = InlineKeyboardMarkup(sell_buy_help_keyboard, one_time_keyboard = True))
+
+    # CONTACT shared -> allow to post photos
+    elif status == TOS:
+        status = CONTACT
+        context.chat_data["status"] = status
+        contact = update.effective_message.contact
+    #    phone = contact.phone_number
+        context.chat_data["contact"] = contact
+        update.effective_message.reply_text(txt[lang_str]["CONTACT_OK"])
+        keyboard_text, buy_help_keyboard = get_buy_help_keyboard(lang_str, available_limit)
+        update.effective_message.reply_text(text = keyboard_text, reply_markup = InlineKeyboardMarkup(buy_help_keyboard, one_time_keyboard = True))
+
+    # already at CONTACT+ (when there shouldn't be any SELL button according to the workflow) 
+    # for CONTACT status, we show a BUY_HELP keyboard with a message, which depends on available number of posts until limit is reached
+    elif status == CONTACT:
+        keyboard_text, buy_help_keyboard = get_buy_help_keyboard(lang_str, available_limit)
+        update.effective_message.reply_text(text = keyboard_text, reply_markup = InlineKeyboardMarkup(buy_help_keyboard, one_time_keyboard = True))
+
+    # for LIMIT status, we also show a BUY_HELP keyboard, but tell the user that posting is not possible until some posts are deleted
+    elif status == LIMIT:
+        keyboard_text, buy_help_keyboard = get_buy_help_keyboard(lang_str, 0)
+        update.effective_message.reply_text(text = keyboard_text, reply_markup = InlineKeyboardMarkup(buy_help_keyboard, one_time_keyboard = True))
+
+    # invalid status
+    else:
+        pass
+
+# handle video, which we don't accept at the time
+def video(update, context):
+    status, lang_str, active_posts = get_chat(context)
+    if status.startswith("banned"):
+        banned()
+        return
+
+    # calculating available posts limit
+    available_limit = lim["LIMIT_USER_POSTS_CNT"] - active_posts
+
+    update.effective_message.reply_text(text = txt[lang_str]["VIDEO"])    
+
+    # no LANG status -> show VIDEO (that it's not supported) message and send the user back to START
+    if status in (NEW, PRELANG, DELETED):
+        start(update, context)
+
+    # Back to main menu (default state for the corresponding status)
+    elif status == LANG:
+        keyboard_text, sell_buy_help_keyboard = get_sell_buy_help_keyboard(lang_str)
+        update.effective_message.reply_text(text = keyboard_text, reply_markup = InlineKeyboardMarkup(sell_buy_help_keyboard, one_time_keyboard = True))
+
+    # Back to main menu (default state for the corresponding status)
+    elif status in (TOS, CONTACT, LIMIT):
+        keyboard_text, buy_help_keyboard = get_buy_help_keyboard(lang_str, available_limit)
+        update.effective_message.reply_text(text = keyboard_text, reply_markup = InlineKeyboardMarkup(buy_help_keyboard, one_time_keyboard = True))
+
+    # invalid status
+    else:
+        pass
+
+# reacton to a photo sent for moderation, in user's chat and in moder's chat
+def photo(update, context):
+    status, lang_str, active_posts = get_chat(context)
+    if status.startswith("banned"):
+        banned()
+        return
+
+    # moder chat
+    if update.message.chat.id == ADMINCHATID:
+        update.effective_message.reply_text(text = txt["MODER_POST_DENY"])        
+    # user char
+    elif update.message.chat.id != "":
+
+        # no LANG status -> show ERROR_TO_START message and send the user back to START
+        if status in (NEW, PRELANG, DELETED):
+            start(update, context)
+
+        # TOS should be approved, request TOS (similar to SELL button)
+        elif status == LANG:
+            keyboard_text, tos_keyboard = get_tos_keyboard(lang_str)
+            update.effective_message.reply_text(text = keyboard_text, reply_markup = InlineKeyboardMarkup(tos_keyboard, one_time_keyboard = True))
+
+        # CONTACT must be shared in order to post
+        elif status == TOS:
+            keyboard_text, share_contact_keyboard = get_share_contact_keyboard(lang_str)
+            update.effective_message.reply_text(text = keyboard_text, reply_markup = ReplyKeyboardMarkup(share_contact_keyboard, one_time_keyboard = True))
+
+        # for CONTACT status, we actually POST!!!
+        elif status == CONTACT:
+            context.bot.sendMessage(ADMINCHATID, text = "photo: " + update.message.to_json())
+            fwd_message = update.message.forward(ADMINCHATID)
+            #store the pic file_id in a key-value store in memory for future references to pic (for recognition etc.) 
+            key = str(uuid4())
+            value = fwd_message.photo[-1].file_id
+            context.bot_data[key] = value
+
+            # active posts += 1
+            active_posts = active_posts + 1
+            context.chat_data["active_posts"] = active_posts
+
+            keyboard_text, moder_keyboard = get_moder_keyboard()
+            context.bot.sendMessage(ADMINCHATID, text = keyboard_text, reply_markup = InlineKeyboardMarkup(moder_keyboard))          
+
+        # for LIMIT status, we also show a BUY_HELP keyboard, but tell the user that posting is not possible until some posts are deleted
+        elif status == LIMIT:
+            keyboard_text, buy_help_keyboard = get_buy_help_keyboard(lang_str, 0)
+            update.effective_message.reply_text(text = keyboard_text, reply_markup = InlineKeyboardMarkup(buy_help_keyboard, one_time_keyboard = True))
+
+        # invalid status
+        else:
+            pass
+
+    # error - empty chat_id
+    else:
+        pass
 
 
 
@@ -434,24 +692,7 @@ def buy_help_menu(update, context):
 
 
 
-# handle contact
-def contact(update, context):
-    contact = update.effective_message.contact
-    phone = contact.phone_number
-    context.chat_data["phone"] = phone
-    update.message.reply_text(txt[context.chat_data["lang"]]["SELL_PHONE_OK"])    
 
-# reacton to a photo sent for moderation
-def photo(update, context):
-    context.bot.sendMessage(ADMINCHATID, text = "photo: " + update.message.to_json())
-    fwd_message = update.message.forward(ADMINCHATID)
-    #store the pic file_id in a key-value store in memory for future references to pic (for recognition etc.) 
-    key = str(uuid4())
-    value = fwd_message.photo[-1].file_id
-    context.bot_data[key] = value
-
-    keyboard_text, moder_keyboard = get_moder_keyboard()
-    context.bot.sendMessage(ADMINCHATID, text = keyboard_text, reply_markup = InlineKeyboardMarkup(moder_keyboard))          
 
 # check if moder_menu has been used
 def moder_menu_check(callback_data):
@@ -493,7 +734,7 @@ def moder_menu(update, context):
     #query.edit_message_text(text=msg.message_id)
 
 def banned(context):
-    print("access attempt by a banned user: ", context.user_data)
+    print("access attempt by a banned user: ", context.chat_data)
 
 def error(update, context):
     """Log Errors caused by Updates."""
@@ -532,14 +773,16 @@ def main():
     # handle main menu (having CONTACT)
     dp.add_handler(CallbackQueryHandler(buy_help_menu, pattern = buy_help_menu_check))
 
-
-
-
+    # handle TOS keyboard
+    dp.add_handler(CallbackQueryHandler(tos_menu, pattern = tos_menu_check))
 
     # handle contact
     dp.add_handler(MessageHandler(Filters.contact, contact))
 
-    # receive photos
+    # handle videos
+    dp.add_handler(MessageHandler(Filters.video, video))
+
+    # receive photos in user's or moder's chat
     dp.add_handler(MessageHandler(Filters.photo, photo))
 
     # handle moderator's menu on new photo
